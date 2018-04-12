@@ -15,17 +15,20 @@ namespace SeniorProject
         public Form1()
         {
             InitializeComponent();
+            
+            MLApp.MLApp matlab = new MLApp.MLApp();
         }
 
         private void predict_click(object sender, EventArgs e)
         {
-            
+            PredictForm predictForm = new PredictForm();
+            predictForm.ShowDialog();
         }
 
         private void train_click(object sender, EventArgs e)
         {
-            TrainForm trainform = new TrainForm();
-            trainform.ShowDialog(); // Shows Form2
+            TrainForm trainForm = new TrainForm();
+            trainForm.ShowDialog();
         }
     }
 }
