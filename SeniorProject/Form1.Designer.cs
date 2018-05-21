@@ -28,76 +28,91 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.button1 = new System.Windows.Forms.Button();
-            this.button2 = new System.Windows.Forms.Button();
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
-            this.splitContainer1.Panel1.SuspendLayout();
-            this.splitContainer1.Panel2.SuspendLayout();
-            this.splitContainer1.SuspendLayout();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
+            this.pbClose = new System.Windows.Forms.PictureBox();
+            this.panel1 = new System.Windows.Forms.Panel();
+            this.btnTrain = new System.Windows.Forms.Button();
+            this.btnPredict = new System.Windows.Forms.Button();
+            ((System.ComponentModel.ISupportInitialize)(this.pbClose)).BeginInit();
+            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
-            // splitContainer1
+            // pbClose
             // 
-            this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(0, 0);
-            this.splitContainer1.Name = "splitContainer1";
+            this.pbClose.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.pbClose.Image = ((System.Drawing.Image)(resources.GetObject("pbClose.Image")));
+            this.pbClose.Location = new System.Drawing.Point(338, 3);
+            this.pbClose.Name = "pbClose";
+            this.pbClose.Size = new System.Drawing.Size(21, 22);
+            this.pbClose.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pbClose.TabIndex = 33;
+            this.pbClose.TabStop = false;
+            this.pbClose.Click += new System.EventHandler(this.pbClose_Click);
             // 
-            // splitContainer1.Panel1
+            // panel1
             // 
-            this.splitContainer1.Panel1.Controls.Add(this.button1);
+            this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(187)))), ((int)(((byte)(208)))));
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.btnTrain);
+            this.panel1.Controls.Add(this.btnPredict);
+            this.panel1.Location = new System.Drawing.Point(0, 31);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(370, 123);
+            this.panel1.TabIndex = 34;
             // 
-            // splitContainer1.Panel2
+            // btnTrain
             // 
-            this.splitContainer1.Panel2.Controls.Add(this.button2);
-            this.splitContainer1.Size = new System.Drawing.Size(384, 111);
-            this.splitContainer1.SplitterDistance = 190;
-            this.splitContainer1.TabIndex = 0;
+            this.btnTrain.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(187)))), ((int)(((byte)(208)))), ((int)(((byte)(248)))));
+            this.btnTrain.FlatAppearance.BorderSize = 0;
+            this.btnTrain.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnTrain.Font = new System.Drawing.Font("Bangna New", 15.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(222)));
+            this.btnTrain.Location = new System.Drawing.Point(3, 3);
+            this.btnTrain.Name = "btnTrain";
+            this.btnTrain.Size = new System.Drawing.Size(172, 114);
+            this.btnTrain.TabIndex = 1;
+            this.btnTrain.Text = "Train";
+            this.btnTrain.UseVisualStyleBackColor = false;
+            this.btnTrain.Click += new System.EventHandler(this.train_click);
             // 
-            // button1
+            // btnPredict
             // 
-            this.button1.Location = new System.Drawing.Point(3, 3);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(184, 105);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "Train";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.train_click);
-            // 
-            // button2
-            // 
-            this.button2.Location = new System.Drawing.Point(3, 3);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(182, 105);
-            this.button2.TabIndex = 1;
-            this.button2.Text = "Predict";
-            this.button2.UseVisualStyleBackColor = true;
-            this.button2.Click += new System.EventHandler(this.predict_click);
+            this.btnPredict.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(187)))), ((int)(((byte)(208)))), ((int)(((byte)(248)))));
+            this.btnPredict.FlatAppearance.BorderSize = 0;
+            this.btnPredict.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPredict.Font = new System.Drawing.Font("Bangna New", 15.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(222)));
+            this.btnPredict.Location = new System.Drawing.Point(193, 3);
+            this.btnPredict.Name = "btnPredict";
+            this.btnPredict.Size = new System.Drawing.Size(172, 114);
+            this.btnPredict.TabIndex = 0;
+            this.btnPredict.Text = "Predict";
+            this.btnPredict.UseVisualStyleBackColor = false;
+            this.btnPredict.Click += new System.EventHandler(this.predict_click);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(384, 111);
-            this.Controls.Add(this.splitContainer1);
+            this.ClientSize = new System.Drawing.Size(371, 155);
+            this.Controls.Add(this.panel1);
+            this.Controls.Add(this.pbClose);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Road Detection";
-            this.splitContainer1.Panel1.ResumeLayout(false);
-            this.splitContainer1.Panel2.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
-            this.splitContainer1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pbClose)).EndInit();
+            this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.SplitContainer splitContainer1;
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.PictureBox pbClose;
+        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Button btnTrain;
+        private System.Windows.Forms.Button btnPredict;
     }
 }
 

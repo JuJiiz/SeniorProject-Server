@@ -25,23 +25,29 @@ namespace SeniorProject
     {
         private String InputPath = "NoPath";
         private String POPath = AppDomain.CurrentDomain.BaseDirectory + "Predict_output.txt";
-        
-        MLApp.MLApp matlab;
 
         String[] dataReceived = new String[2];
 
         TcpListener listener;
-        TcpClient client;
+        TcpClient client = new TcpClient();
         StreamReader STR;
         StreamWriter STW;
         String receive = "";
+        Boolean ServerWork = false;
 
-        int PredictResult = 0;
+        long AllFrames = 0;
+        int MFrames = 0;
+        int LFrames = 0;
+        int RFrames = 0;
+        int OFrames = 0;
+        int UnknowFrames = 0;
+
+        String PredictResult = "";
+
+        MLApp.MLApp matlab = new MLApp.MLApp();
 
         Grayscale grayscale = new Grayscale(0.2125, 0.7154, 0.0721);
         CannyEdgeDetector canny = new CannyEdgeDetector(0, 5);
-
-        bool ServerWorking = false;
 
         BackgroundWorker bw = new BackgroundWorker();
         BackgroundWorker bwRead = new BackgroundWorker();
@@ -51,14 +57,13 @@ namespace SeniorProject
         {
             InitializeComponent();
 
-            matlab = new MLApp.MLApp();
+            //Console.WriteLine(AppDomain.CurrentDomain.BaseDirectory + "Matlab\\");
 
             bw.WorkerReportsProgress = true;
+            bw.WorkerSupportsCancellation = true;
             bw.DoWork += new DoWorkEventHandler(predict_DoWork);
             bw.ProgressChanged += new ProgressChangedEventHandler(predict_Change);
             bw.RunWorkerCompleted += new RunWorkerCompletedEventHandler(predict_Completed);
-
-            bwRead.DoWork += new DoWorkEventHandler(serverRead_DoWork);
 
             bwWrite.DoWork += new DoWorkEventHandler(serverWrite_DoWork);
         }
@@ -73,30 +78,35 @@ namespace SeniorProject
             }
         }
 
+        public String matlabPredict(String hogClass, String hogValue)
+        {
+            matlab.Execute("cd " + AppDomain.CurrentDomain.BaseDirectory + "Matlab\\");
+            object result = null;
+            matlab.Feval("OSELM_predict", 2, out result, hogClass, hogValue);
+            object[] res = result as object[];
+            matlab.Quit();
+
+            return Convert.ToString(res[0]);
+        }
+
         private void run_click(object sender, EventArgs e)
         {
             if (!InputPath.Equals("NoPath"))
             {
+                pbClose.Enabled = false;
                 btnRun.Enabled = false;
                 tbPredict.Clear();
+                MFrames = 0;
+                LFrames = 0;
+                RFrames = 0;
+                OFrames = 0;
+                UnknowFrames = 0;
                 bw.RunWorkerAsync();
             }
             else
             {
                 MessageBox.Show("Please Select \"Video Input\" ", "Predict");
             }
-        }
-        
-        //Execute Matlab OSELM Predict
-        private int matlab_execute(String hogClass,String hogValue)
-        {
-            matlab.Execute("cd " + AppDomain.CurrentDomain.BaseDirectory);
-            object result = null;
-            matlab.Feval("OSELM_predict", 1, out result, hogClass, hogValue);
-            object[] res = result as object[];
-            matlab.Quit();
-
-            return Convert.ToInt32(res[0]);
         }
 
         private void form_load(object sender, EventArgs e)
@@ -111,49 +121,58 @@ namespace SeniorProject
                 }
             }
 
+            listener = new TcpListener(IPAddress.Parse(lbIP.Text), 8010);
         }
 
         private void StartServer_click(object sender, EventArgs e)
         {
-            listener = new TcpListener(IPAddress.Parse(lbIP.Text), 8010);
-            listener.Start();
-            ServerWorking = true;
-            bwRead.RunWorkerAsync();
-            Console.WriteLine("Start");
-            lbStatus.Text = "Online";
-            btnServer.Enabled = false;
-            lbStatus.ForeColor = Color.Green;
+            tbPredict.Clear();
+            pbExam.Image = null;
 
-            //Start server host
-            //if (bwServer.IsBusy)
-            //{
-            //    listener.Stop();
-            //    bwServer.CancelAsync();
-            //    lbStatus.Text = "Offline";
-            //    lbStatus.ForeColor = Color.Red;
-            //    btnServer.Text = "Start Server";
-            //    Console.WriteLine("Stop");
-            //}
-            //else if(!bwServer.CancellationPending)
-            //{
-            //    bwServer.RunWorkerAsync();
-            //    Console.WriteLine("Start");
-            //    lbStatus.Text = "Online";
-            //    btnServer.Text = "Stop Server";
-            //    lbStatus.ForeColor = Color.Green;
-            //}
+            if (ServerWork == false)
+            {
+                bwRead = new BackgroundWorker();
+                bwRead.DoWork += new DoWorkEventHandler(serverRead_DoWork);
+                bwRead.WorkerSupportsCancellation = true;
+
+                listener.Start();
+                bwRead.RunWorkerAsync();
+                lbStatus.Text = "Online";
+                btnServer.Text = "Stop Server";
+                lbStatus.ForeColor = Color.Green;
+                ServerWork = true;
+
+                btnVideoBrowse.Enabled = false;
+                btnRun.Enabled = false;
+                this.ControlBox = false;
+            }
+            else
+            if (ServerWork == true)
+            {
+                listener.Stop();
+                bwRead.CancelAsync();
+                lbStatus.Text = "Offline";
+                lbStatus.ForeColor = Color.Red;
+                btnServer.Text = "Start Server";
+                Console.WriteLine("Stop");
+                ServerWork = false;
+
+                btnVideoBrowse.Enabled = true;
+                btnRun.Enabled = true;
+                this.ControlBox = true;
+            }
         }
 
         private void predict_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
-            worker.ReportProgress(11);
+            worker.ReportProgress(0);
 
             VideoFileReader read = new VideoFileReader();
             read.Open(InputPath);
 
             double[,] hogArray = new double[read.FrameCount - 1, 288];
-            int predictResult = 0;
+            AllFrames = read.FrameCount-1;
 
             for (int i = 0; i < read.FrameCount - 1; i++)
             {
@@ -162,6 +181,8 @@ namespace SeniorProject
                 Bitmap imgGray = grayscale.Apply(resize);
                 Bitmap imgCanny = canny.Apply(imgGray);
 
+                pbExam.Image = image;
+
                 HistogramsOfOrientedGradients hog = new HistogramsOfOrientedGradients(9, 2, 16);
                 Bitmap resizeHOG = new Bitmap(imgCanny, 64, 128);
                 List<double[]> resultHOG = hog.ProcessImage(resizeHOG);
@@ -169,7 +190,7 @@ namespace SeniorProject
                 resultHOG.CopyTo(valueHog);
                 int count = 0;
                 String hogValues = "";
-                
+
                 for (int j = 0; j < 8; j++)
                 {
                     for (int k = 0; k < 36; k++)
@@ -183,9 +204,9 @@ namespace SeniorProject
                     }
                 }
 
-                predictResult = matlab_execute("0.000000", hogValues);
+                PredictResult = matlabPredict("0.000000", hogValues);
 
-                worker.ReportProgress(predictResult);
+                worker.ReportProgress(100);
 
                 //Clear value(Reduce RAM usage)
                 image.Dispose();
@@ -197,47 +218,46 @@ namespace SeniorProject
 
         private void predict_Change(object sender, ProgressChangedEventArgs e)
         {
-            if (e.ProgressPercentage.ToString().Equals("11"))
+            if (e.ProgressPercentage.ToString().Equals("0"))
             {
-                this.lbPredictStatus.Text = "Data Preparing...";
-                this.lbPredictStatus.ForeColor = Color.Red;
-            }
-            else if (e.ProgressPercentage.ToString().Equals("22"))
-            {
-                this.lbPredictStatus.Text = "Predict Processing...";
+                this.lbPredictStatus.Text = "Please wait...";
                 this.lbPredictStatus.ForeColor = Color.Red;
             }
 
-            if (e.ProgressPercentage.ToString().Equals("1"))
+            if (e.ProgressPercentage.ToString().Equals("100"))
             {
-                //this.lbOutput.Text = "Class1";
-                tbPredict.AppendText("Class1\n");
+                tbPredict.AppendText("Result: ");
+                if (PredictResult.Equals("1"))
+                {
+                    tbPredict.AppendText("On lane (Middle)");
+                    MFrames++;
+                }
+                else
+                if (PredictResult.Equals("2"))
+                {
+                    tbPredict.AppendText("On lane (Left)");
+                    LFrames++;
+                }
+                else
+                if (PredictResult.Equals("3"))
+                {
+                    tbPredict.AppendText("On lane (Right)");
+                    RFrames++;
+                }
+                else
+                if (PredictResult.Equals("4"))
+                {
+                    tbPredict.AppendText("Head out");
+                    OFrames++;
+                }
+                else
+                {
+                    tbPredict.AppendText("Unknow");
+                    UnknowFrames++;
+                }
+                tbPredict.AppendText("\n");
             }
-            else if (e.ProgressPercentage.ToString().Equals("2"))
-            {
-                //this.lbOutput.Text = "Class2";
-                tbPredict.AppendText("Class2\n");
-            }
-            else if (e.ProgressPercentage.ToString().Equals("3"))
-            {
-                //this.lbOutput.Text = "Class3";
-                tbPredict.AppendText("Class3\n");
-            }
-            else if (e.ProgressPercentage.ToString().Equals("4"))
-            {
-                //this.lbOutput.Text = "Class4";
-                tbPredict.AppendText("Class4\n");
-            }
-            else if (e.ProgressPercentage.ToString().Equals("5"))
-            {
-                //this.lbOutput.Text = "Class5";
-                tbPredict.AppendText("Class5\n");
-            }
-            else if (e.ProgressPercentage.ToString().Equals("6"))
-            {
-                //this.lbOutput.Text = "Class6";
-                tbPredict.AppendText("Class6\n");
-            }
+
         }
 
         private void predict_Completed(object sender, RunWorkerCompletedEventArgs e)
@@ -245,20 +265,28 @@ namespace SeniorProject
             this.lbPredictStatus.Text = "Idle";
             this.lbPredictStatus.ForeColor = Color.Black;
             btnRun.Enabled = true;
-            MessageBox.Show("Successfully.", "Predict");
+            pbClose.Enabled = true;
+            MessageBox.Show("Successfully.\n" + "\nAll Frames: " + AllFrames + "\nMiddle: " + MFrames + "\nLeft: " + LFrames + "\nRight: " + RFrames + "\nOut: " + OFrames + "\nUnknow: " + UnknowFrames, "Predict");
         }
 
         private void form_Closed(object sender, FormClosedEventArgs e)
         {
-
+            client = null;
+            listener.Stop();
+            listener = null;
+            if (bwRead.IsBusy)
+            {
+                bwRead.CancelAsync();
+            }
         }
 
         private void serverRead_DoWork(object sender, DoWorkEventArgs e)
         {
-
-            while (ServerWorking == true)
+            try
             {
+                Console.WriteLine("Start1");
                 client = listener.AcceptTcpClient();
+                Console.WriteLine("Start2");
                 STW = new StreamWriter(client.GetStream());
                 STW.AutoFlush = true;
 
@@ -268,7 +296,6 @@ namespace SeniorProject
                     receive = STR.ReadLine();
                     if (!receive.Equals(""))
                     {
-                        //lbTest.Invoke(new MethodInvoker(delegate () { lbTest.Text = receive; }));
 
                         dataReceived = receive.Split(',');
                         Console.WriteLine(dataReceived[1]);
@@ -322,7 +349,7 @@ namespace SeniorProject
                                 }
                             }
 
-                            PredictResult = matlab_execute("0.000000", hogValues);
+                            PredictResult = matlabPredict("0.000000", hogValues);
 
                             imgByte.Clear();
                             image.Dispose();
@@ -350,8 +377,12 @@ namespace SeniorProject
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    Console.WriteLine("JuJiiz " + ex);
                 }
+            }
+            catch (SocketException SE)
+            {
+                Console.WriteLine("JuJiiz " + SE);
             }
         }
 
@@ -366,16 +397,28 @@ namespace SeniorProject
                 if (dataReceived[1].Equals("connectRequest"))
                 {
                     STW.WriteLine("OK");
+                    bwRead.CancelAsync();
                 }
                 else
                 {
                     STW.WriteLine(PredictResult);
+                    //tbPredict.AppendText("Result (Client): " + PredictResult + "\n");
+                    bwRead.CancelAsync();
                 }
             }
             else
             {
                 Console.WriteLine("Not Connected");
             }
+            bwRead = new BackgroundWorker();
+            bwRead.DoWork += new DoWorkEventHandler(serverRead_DoWork);
+            bwRead.WorkerSupportsCancellation = true;
+            bwRead.RunWorkerAsync();
+        }
+
+        private void pbClose_Click(object sender, EventArgs e)
+        {
+            this.Close();
         }
     }
 }

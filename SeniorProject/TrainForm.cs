@@ -1,23 +1,17 @@
 ﻿using Accord.Video.FFMPEG;
 using System.Drawing;
-using AForge.Imaging.Filters;
 using System;
-using System.Collections.Generic;
 using Accord.Math;
-using Accord.Imaging;
-using System.Linq;
 using System.Windows.Forms;
-using Excel = Microsoft.Office.Interop.Excel;
 using System.IO;
 using System.ComponentModel;
-using System.Threading;
 
 namespace SeniorProject
 {
     public partial class TrainForm : Form
     {
         private String InputPath = "NoPath";
-        private String OutputPath = AppDomain.CurrentDomain.BaseDirectory + "trainResource.txt";
+        private String OutputPath = AppDomain.CurrentDomain.BaseDirectory + "Matlab\\trainResource.txt";
         private String strClass = "NoClass";
 
         BackgroundWorker bw = new BackgroundWorker();
@@ -29,9 +23,9 @@ namespace SeniorProject
             rbClass1.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_on);
             rbClass2.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_on);
             rbClass3.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_on);
-            rbClass4.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_off);
-            rbClass5.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_off);
-            rbClass6.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_off);
+            rbClass4.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_on);
+            //rbClass5.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_off);
+            //rbClass6.CheckedChanged += new EventHandler(radioButtons_CheckedChanged_off);
 
             bw.WorkerReportsProgress = true;
             bw.DoWork += new DoWorkEventHandler(process_DoWork);
@@ -56,6 +50,7 @@ namespace SeniorProject
             if (!InputPath.Equals("NoPath") && !strClass.Equals("NoClass"))
             {
                 btnRun.Enabled = false;
+                btnVideoBrowse.Enabled = false;
                 bw.RunWorkerAsync();
             }
             else
@@ -65,78 +60,11 @@ namespace SeniorProject
 
         }
 
-        private double[,] genHOG(VideoFileReader vdoRead)
-        {
-            Grayscale grayscale = new Grayscale(0.2125, 0.7154, 0.0721);
-            CannyEdgeDetector canny = new CannyEdgeDetector(0, 5);
-            double[,] hogArray = new double[vdoRead.FrameCount - 1, 288];
-
-            for (int i = 0; i < vdoRead.FrameCount - 1; i++)
-            {
-                Bitmap image = vdoRead.ReadVideoFrame(i);
-                Bitmap resize = new Bitmap(image, 400, 300);
-                Bitmap imgGray = grayscale.Apply(resize);
-                Bitmap imgCanny = canny.Apply(imgGray);
-
-                HistogramsOfOrientedGradients hog = new HistogramsOfOrientedGradients(9, 2, 16);
-                Bitmap resizeHOG = new Bitmap(imgCanny, 64, 128);
-                List<double[]> resultHOG = hog.ProcessImage(resizeHOG);
-                double[][] valueHog = new double[8][];
-                resultHOG.CopyTo(valueHog);
-                int count = 0;
-                for (int j = 0; j < 8; j++)
-                {
-                    for (int k = 0; k < 36; k++)
-                    {
-                        if (count < 288)
-                        {
-                            hogArray[i, count] = valueHog[j][k];
-                            count++;
-                        }
-                    }
-                }
-
-                //Clear value(Reduce RAM usage)
-                image.Dispose();
-                resize.Dispose();
-                imgGray.Dispose();
-                imgCanny.Dispose();
-            }
-
-            return hogArray;
-        }
-
-        //Execute Matlab OSELM Train
-        private void matlab_execute(int nHiddenNeurons, int N0, int Block)
-        {
-            // Create the MATLAB instance 
-            MLApp.MLApp matlab = new MLApp.MLApp();
-
-            // Change to the directory where the function is located 
-            matlab.Execute("cd " + AppDomain.CurrentDomain.BaseDirectory);
-
-            // Define the output 
-            object result = null;
-
-            // Call the MATLAB function myfunc
-            matlab.Feval("OSELM_train", 2, out result, "trainResource.txt", 1, nHiddenNeurons, "sig", N0, Block);
-
-            // Display result 
-            object[] res = result as object[];
-
-            Console.WriteLine(res[0]);
-            Console.WriteLine(res[1]);
-            Console.ReadLine();
-            matlab.Quit();
-        }
-
         //Uncheck off-road
         private void radioButtons_CheckedChanged_on(object sender, EventArgs e)
         {
             RadioButton radioButton = sender as RadioButton;
-
-            if (rbClass1.Checked || rbClass2.Checked || rbClass3.Checked)
-            {
+            
                 if (rbClass1.Checked)
                 {
                     strClass = "1.000000";
@@ -149,39 +77,13 @@ namespace SeniorProject
                 {
                     strClass = "3.000000";
                 }
-
-                rbClass4.Checked = false;
-                rbClass5.Checked = false;
-                rbClass6.Checked = false;
-            }
-        }
-
-        //Uncheck on-road
-        private void radioButtons_CheckedChanged_off(object sender, EventArgs e)
-        {
-            RadioButton radioButton = sender as RadioButton;
-
-            if (rbClass4.Checked || rbClass5.Checked || rbClass6.Checked)
-            {
-                if (rbClass4.Checked)
+                else if (rbClass4.Checked)
                 {
                     strClass = "4.000000";
                 }
-                else if (rbClass5.Checked)
-                {
-                    strClass = "5.000000";
-                }
-                else if (rbClass6.Checked)
-                {
-                    strClass = "6.000000";
-                }
-
-                rbClass1.Checked = false;
-                rbClass2.Checked = false;
-                rbClass3.Checked = false;
-            }
+            
         }
-
+        
         private void process_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
@@ -190,7 +92,7 @@ namespace SeniorProject
             VideoFileReader read = new VideoFileReader();
             read.Open(InputPath);
 
-            double[,] genHog = genHOG(read);
+            double[,] genHog = HogTrain.hog(read);
 
             StreamWriter file = new StreamWriter(OutputPath, true);
             for (int i = 0; i < read.FrameCount - 1; i++)
@@ -211,7 +113,7 @@ namespace SeniorProject
             Console.WriteLine(DataLength + " / " + hiddenNeu);
 
             worker.ReportProgress(2);
-            matlab_execute(hiddenNeu, DataLength, 20);
+            MatlabTrain.train(hiddenNeu, DataLength, 20);
 
             genHog.Clear();
         }
@@ -240,7 +142,13 @@ namespace SeniorProject
             this.lbStatus.Text = "Idle";
             this.lbStatus.ForeColor = Color.Black;
             btnRun.Enabled = true;
+            btnVideoBrowse.Enabled = true;
             MessageBox.Show("Successfully.", "Train");
+        }
+
+        private void pbClose_Click(object sender, EventArgs e)
+        {
+            this.Close();
         }
     }
 }
